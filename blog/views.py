@@ -18,7 +18,16 @@ def blog_single(request, pid):
     if post.status == True:
         post.counted_view += 1
         post.save()
-        context = {'post': post}
+        try:
+            next_post = Post.objects.filter(published_date__gt=post.published_date, status=True).order_by('published_date').first()
+        except Post.DoesNotExist:
+            next_post = None
+
+        try:
+            prev_post = Post.objects.filter(published_date__lt=post.published_date, status=True).order_by('-published_date').first()
+        except Post.DoesNotExist:
+            prev_post = None
+        context = {'post': post, 'next_post': next_post, 'prev_post': prev_post}
         return render(request, 'blog/blog-single.html', context)
     else:
         return HttpResponse("This Post Is Not Published Yet!")
