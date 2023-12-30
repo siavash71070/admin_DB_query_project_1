@@ -1,4 +1,5 @@
 from django.shortcuts import render, get_object_or_404, HttpResponse
+from django.http import HttpResponseForbidden
 from blog.models import Post
 from datetime import datetime
 from django.utils import timezone
@@ -7,37 +8,29 @@ from django.utils import timezone
 
 
 def blog_view(request):
-    posts = Post.objects.filter(published_date__lt=timezone.now())
-    filtered_post = posts.filter(status=True)
-    context = {"posts": filtered_post}
+    posts = Post.objects.filter(published_date__lt=timezone.now(), status=True)
+    context = {"posts": posts}
     
     return render(request, 'blog/blog-home.html', context)
 
 def blog_single(request, pid):
-    post = get_object_or_404(Post, pk=pid)
-    if post.status == True:
-        post.counted_view += 1
-        post.save()
-        try:
-            next_post = Post.objects.filter(published_date__gt=post.published_date, status=True).order_by('published_date').first()
-        except Post.DoesNotExist:
-            next_post = None
-
-        try:
-            prev_post = Post.objects.filter(published_date__lt=post.published_date, status=True).order_by('-published_date').first()
-        except Post.DoesNotExist:
-            prev_post = None
+    post = Post.objects.get(id=pid)
+    all_posts = Post.objects.filter(status='True', published_date__lt=timezone.now()).order_by('id')
+    current_post_index = list(all_posts).index(post)
+    next_post = None
+    prev_post = None
+    try:
+        if current_post_index > 0:
+            prev_post = all_posts[current_post_index - 1]
+        
+        if current_post_index < len(all_posts) - 1:
+            next_post = all_posts[current_post_index + 1]
+            post.counted_view += 1
+            post.save()
+            if post.published_date > timezone.now():
+                return HttpResponseForbidden("This Post Is Not Published Yet!")
         context = {'post': post, 'next_post': next_post, 'prev_post': prev_post}
         return render(request, 'blog/blog-single.html', context)
-    else:
+    
+    except Post.DoesNotExist:   
         return HttpResponse("This Post Is Not Published Yet!")
-# a test for getting filter in db and make unique post
-def test_with_time_and_published_date(request, pid):
-    post = get_object_or_404(Post, pk=pid)
-    current_time = timezone.now()
-    if post.published_date <= current_time:
-        post.counted_view += 1
-        post.save()
-        return render(request, 'test.html', {'post': post})
-    else:
-        return HttpResponse("Post Not Published")
