@@ -14,7 +14,7 @@ def blog_view(request):
     return render(request, 'blog/blog-home.html', context)
 
 def blog_single(request, pid):
-    post = Post.objects.get(id=pid)
+    post = Post.objects.get(id=pid, status='True', published_date__lt=timezone.now())
     all_posts = Post.objects.filter(status='True', published_date__lt=timezone.now()).order_by('id')
     current_post_index = list(all_posts).index(post)
     next_post = None
